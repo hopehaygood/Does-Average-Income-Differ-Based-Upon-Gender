@@ -1,0 +1,300 @@
+---
+title: "Statistics Project"
+output: html_document
+---
+```{r}
+library(carData)
+data("Salaries")
+library(dplyr)
+
+```
+
+```{r}
+data <-  read.csv(file = "/Users/12563/Documents/Statistical Infrence Spring 2022/Project/data_sal.csv")
+
+```
+
+```{r}
+head(data)
+```
+
+```{r}
+tail(data)
+```
+
+
+```{r}
+data$Current.Salary
+```
+
+```{r}
+summary(data$Current.Salary)
+```
+
+```{r}
+mean(data$Current.Salary, na.rm = TRUE)
+```
+
+Thus, the average current salary between amung all of the men and women is $34,420. Now, we want to
+compare and see how the average salary of men compares to the average slary of females. 
+
+```{r}
+summary(data)
+```
+
+Notice that the average years of education amung both males and females is 13.49 years.
+
+```{r}
+tab <-  table(data$Gender)
+tab
+```
+
+
+
+
+
+Notice that there are more males than females. Also Notice that there are 474 different people taken into account here. 
+
+```{r}
+tab <- table(data$Gender, data$Years.of.Education)
+tab
+```
+
+```{r}
+tab <- table(data$Years.of.Education, data$Gender)
+tab
+```
+
+
+
+```{r}
+tab <-  table(data$Current.Salary, data$Gender)
+tab
+```
+
+
+```{r}
+mean <- aggregate(Current.Salary ~ Gender, data = data, mean)
+
+mean
+```
+
+Shown above is the average slary between male and female. 
+Notice that we can definitely see a difference in the average salary of males and females; 
+the salary of the men being higher by about 15,000.
+
+
+
+
+```{r}
+#Let us Double check the values obtained from the aggreagate function
+
+tmpo = subset(data, Gender =='f')
+mean(tmpo$Current.Salary, na.rm=TRUE)
+
+#This is the same as shown above so we know that we did this correctly
+```
+
+```{r}
+tmp1 = subset(data, Gender == 'm')
+mean(tmp1$Current.Salary, na.rm=TRUE)
+
+
+#This is the same as shown above so we know that we did this correctly
+```
+
+
+
+```{r}
+sd <- aggregate(Current.Salary ~ Gender, data = data, sd)
+
+sd
+```
+Shown above is the standard Deviaiton table of the Current Salary categorized via the Gender variable Standard Deviation table. 
+
+```{r}
+
+# ANOVA tests whether any of the group means are different from the overall mean of the data by checking the variance of each individual group aganist the overall variance of the data. If one or more groups falls outside the range of variation predicted by the null hypothesis (all group means are equal), then the test is statistically significant. 
+
+# the aov() function will calculate the test statistic for ANOVA and determine whether there is significant variation among the groups formed by the levels of the independent variable
+
+#This is a one-way ANOVA, we are modeling the Current Slary as a function of the Gender Variable
+
+#ANOA Test Hypotheses:
+#Null hypothesis: the means of the different groups are the same 
+# i.e. the means of the Male and Female groups are the same
+#Alternative Hypothesis: At least one sample mean is not equal to the others
+# i.e. The means of the male and female groups are not the same
+
+data$Gender = as.factor(data$Gender)
+is.factor(data$Gender)
+one.way <- aov(Current.Salary ~ Gender, data = data)
+
+summary(one.way)
+```
+
+Notice that the degrees of freedom is one, which is what we would expect as there are to categories of the Gender vairable, male & female.
+```{r}
+colnames(data)
+```
+
+```{r}
+Tmp = data["Current.Salary", "Gender"]
+Tmp_1 = data[ , c(2,1)]
+Tmp.cc = Tmp_1[complete.cases(Tmp_1), ]
+#Check Assumptions
+Tmp_bind_1 = cbind(one.way$residuals, Tmp.cc)
+```
+
+```{r}
+install.packages("hms")
+install.packages("car")
+library(car)
+```
+```{r}
+library(lme4)
+library(lmerTest)
+library(multcomp)
+library(car)
+library(nortest)
+install.packages("tidyverse")
+library(tidyverse)
+```
+
+
+```{r}
+
+# I cannot get center = mean to work here
+colnames(Tmp_bind_1)[1]=c('residuals')
+leveneTest(residuals ~ Gender,data=Tmp_bind_1)
+
+# Recall the Decision Rule for Levene's Test (for alpha=0.05)
+
+# Levene's Test: tests wheather the variances of two samples are approximately equal
+
+# if p<=0.5, the variances are significantly different. 
+
+# if p>0.5, the variances are not significantly different.
+```
+
+```{r}
+# Now we will perform the Kruskal-Wallis Test
+kruskal.test(Current.Salary ~ Gender, data = data)
+```
+
+
+```{r}
+# Multiple Pairwise-Comparison between groups
+pairwise.wilcox.test(data$Current.Salary, data$Gender,
+                 p.adjust.method = "BH")
+```
+```{r}
+
+
+Dmatrix.tmp=subset(Tmp_bind_1,Tmp_bind_1[,3]=='m')
+#Dmatrix.tmp;dim(Dmatrix.tmp)  
+head(Dmatrix.tmp)
+```
+
+
+
+```{r}
+ks.test(Dmatrix.tmp[,1], "pnorm")
+```
+```{r}
+Dmatrix.tmp_2=subset(Tmp_bind_1,Tmp_bind_1[,3]=='m')
+#Dmatrix.tmp;dim(Dmatrix.tmp)  
+shapiro.test(Dmatrix.tmp_2[,1])
+```
+
+```{r}
+Dmatrix.tmp_2=subset(Tmp_bind_1,Tmp_bind_1[,3]=='f')
+#Dmatrix.tmp;dim(Dmatrix.tmp)  
+shapiro.test(Dmatrix.tmp_2[,1])
+```
+
+```{r}
+
+boxplot(Gender~Current.Salary, data = data)
+```
+```{r}
+boxplot(Current.Salary~Gender, data = data)
+points(means, col="red",pch=18)
+```
+```{r}
+p<-qplot(Gender,Current.Salary,data=data,geom='boxplot')
+p<-p+stat_summary(fun=mean,shape=1,col='red',geom='point')
+print(p)
+```
+
+```{r}
+data$Gender <- ifelse(data$Gender == f, "Female", data$Gender)
+data$Gender <- ifelse(data$Gender == m, "Male", data$Gender)
+
+data$Gender <- as.factor(data$Gender) 
+```
+
+```{r}
+p_1 <- ggplot(data, aes(x=Current.Salary, y=Gender, fill=Current.Salary)) +
+    geom_boxplot(alpha=0.7) +
+    stat_summary(fun.y=mean, geom="point", shape=20, size=10, color="red", fill="red") +
+    theme(legend.position="none") +
+    scale_fill_brewer(palette="Set1")
+
+plot(p_1)
+```
+```{r}
+rm(list=ls())
+```
+
+```{r}
+# plot
+p <- ggplot(data, aes(x=Gender, y=Current.Salary, fill=Gender)) +
+    geom_boxplot(alpha=0.7) +
+    stat_summary(fun.y =mean, geom="point", shape=20, size=4, color="green", fill="red") +
+    theme(legend.position="none") +
+    scale_fill_brewer(palette="Set1")
+p
+```
+```{r}
+install.packages(PerformanceAnalytics)    
+library(PerformanceAnalytics)
+chart.Boxplot(data$Gender,data$Current.Salary)
+```
+
+```{r}
+
+label = c("Female", "Male")
+p_1 <- ggplot(data, aes(x=Current.Salary, y=Gender, fill=Current.Salary)) +
+    geom_boxplot(alpha=0.7) +
+    stat_summary(fun.y=mean, geom="point", shape=20, size=4, color="red", fill="red") +
+    theme(legend.position="none") +
+    scale_fill_brewer(palette="Set1")
+
+plot(p_1)
+```
+```{r}
+
+library(tidyverse)
+library(gapminder)
+```
+
+
+```{r}
+ggplot(data, aes(x = Gender, y = Current.Salary)) + geom_boxplot() +
+  stat_summary(fun = mean, geom = "point", col = "green") +  
+stat_summary(fun = mean, geom = "text", col = "green",    
+vjust = 1.5, aes(label = paste("Mean:", round(..y.., digits = 1))))
+```
+
+```{r}
+
+posthoc=glht(one.way,linfct=mcp(Gender ='Tukey'))
+summary(posthoc)
+confint(posthoc)
+```
+
+
+
+
+of 5 diff
